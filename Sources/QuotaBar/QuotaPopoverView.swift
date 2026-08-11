@@ -188,7 +188,7 @@ private struct ProviderCardView: View {
   let globallyStale: Bool
 
   private var knownQuota: KnownQuota? {
-    QuotaSummary.tightestKnown(for: provider)
+    QuotaSummary.knownForDisplay(for: provider)
   }
 
   private var percentage: Double? {
@@ -196,7 +196,18 @@ private struct ProviderCardView: View {
   }
 
   private var signal: QuotaSignal {
-    globallyStale ? .neutral : QuotaSignal.forRemaining(percentage)
+    cardIsStale ? .neutral : QuotaSignal.forRemaining(percentage)
+  }
+
+  private var cardIsStale: Bool {
+    globallyStale || !provider.state.isCurrent
+  }
+
+  private var unresolvedAvailability: EffectiveAvailability? {
+    guard unresolvedRelationships else { return nil }
+    return provider.quotaSemantics?.effectiveAvailability.first {
+      $0.pace != nil || $0.runway != nil
+    }
   }
 
   private var unresolvedRelationships: Bool {
@@ -224,7 +235,7 @@ private struct ProviderCardView: View {
             Text("\(percentage.formattedQuotaPercentage)%")
               .font(.system(size: 19, weight: .bold, design: .rounded))
               .monospacedDigit()
-            Text(globallyStale ? "last known" : scopeLabel)
+            Text(cardIsStale ? "last known" : scopeLabel)
               .font(.system(size: 9.5, weight: .medium))
               .foregroundStyle(QuotaPalette.secondaryText)
           } else {
@@ -252,6 +263,8 @@ private struct ProviderCardView: View {
 
       if let availability = knownQuota?.availability {
         effectiveDetails(availability)
+      } else if let availability = unresolvedAvailability {
+        unresolvedDetails(availability)
       }
 
       if !provider.windows.isEmpty {
@@ -312,6 +325,18 @@ private struct ProviderCardView: View {
     }
   }
 
+  private func unresolvedDetails(_ availability: EffectiveAvailability) -> some View {
+    VStack(spacing: 6) {
+      if availability.pace != nil {
+        detailRow(icon: "speedometer", label: "Reported pace", value: paceText(availability.pace))
+      }
+      if availability.runway != nil {
+        detailRow(
+          icon: "flag.checkered", label: "Reported runway", value: runwayText(availability.runway))
+      }
+    }
+  }
+
   private var windowRows: some View {
     VStack(alignment: .leading, spacing: 7) {
       Divider().overlay(Color.white.opacity(0.07))
@@ -321,19 +346,26 @@ private struct ProviderCardView: View {
         .foregroundStyle(QuotaPalette.secondaryText.opacity(0.8))
 
       ForEach(provider.windows, id: \.id) { window in
-        HStack(alignment: .firstTextBaseline, spacing: 7) {
-          Text(window.label.capitalized)
-            .lineLimit(1)
-          Spacer(minLength: 6)
-          Text(window.percentRemaining.map { "\($0.formattedQuotaPercentage)%" } ?? "Unknown")
-            .foregroundStyle(
-              window.percentRemaining == nil ? QuotaPalette.neutral : QuotaPalette.primaryText
-            )
-            .monospacedDigit()
-          Text(windowResetText(window))
-            .foregroundStyle(QuotaPalette.secondaryText)
-            .frame(width: 104, alignment: .trailing)
-            .lineLimit(1)
+        VStack(alignment: .leading, spacing: 3) {
+          HStack(alignment: .firstTextBaseline, spacing: 7) {
+            Text(window.label.capitalized)
+              .lineLimit(1)
+            Spacer(minLength: 6)
+            Text(window.percentRemaining.map { "\($0.formattedQuotaPercentage)%" } ?? "Unknown")
+              .foregroundStyle(
+                window.percentRemaining == nil ? QuotaPalette.neutral : QuotaPalette.primaryText
+              )
+              .monospacedDigit()
+            Text(windowResetText(window))
+              .foregroundStyle(QuotaPalette.secondaryText)
+              .frame(width: 104, alignment: .trailing)
+              .lineLimit(1)
+          }
+          if let pace = window.pace {
+            Text("Pace · \(windowPaceText(pace))")
+              .font(.system(size: 9.5))
+              .foregroundStyle(QuotaPalette.secondaryText)
+          }
         }
         .font(.system(size: 10.5))
         .accessibilityElement(children: .combine)
@@ -445,6 +477,20 @@ private struct ProviderCardView: View {
     case .behind: return "Usage below linear pace"
     case .mixed: return "Mixed across windows"
     case .unknown: return "Unknown"
+    }
+  }
+
+  private func windowPaceText(_ pace: QuotaPace) -> String {
+    switch pace.status {
+    case .ahead: return "Burning faster than reset"
+    case .onPace: return "On pace"
+    case .behind: return "Usage below linear pace"
+    case .unknown:
+      switch pace.reason {
+      case .unsupportedPeriod: return "Unavailable for this period"
+      case .stale: return "Unavailable for stale data"
+      default: return "Unknown"
+      }
     }
   }
 

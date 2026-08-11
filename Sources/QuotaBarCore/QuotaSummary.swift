@@ -48,6 +48,11 @@ public enum QuotaSummary {
   public static func tightestKnown(for provider: ProviderQuota) -> KnownQuota? {
     guard provider.state.isCurrent else { return nil }
 
+    return knownForDisplay(for: provider)
+  }
+
+  public static func knownForDisplay(for provider: ProviderQuota) -> KnownQuota? {
+
     let availability = provider.quotaSemantics?.effectiveAvailability
       .filter(isUsableKnownAvailability)
       .min { left, right in

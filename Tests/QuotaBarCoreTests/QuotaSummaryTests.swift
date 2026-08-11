@@ -62,6 +62,15 @@ struct QuotaSummaryTests {
     #expect(tightest.availability.effectivePercentRemaining == 81)
   }
 
+  @Test
+  func staleProviderRetainsKnownEffectiveQuotaForCardDisplay() throws {
+    let stale = provider(id: "old", remaining: 5, status: .stale, stale: true)
+
+    #expect(QuotaSummary.tightestKnown(for: stale) == nil)
+    let displayed = try #require(QuotaSummary.knownForDisplay(for: stale))
+    #expect(displayed.availability.effectivePercentRemaining == 5)
+  }
+
   private func provider(
     id: String,
     remaining: Double,
