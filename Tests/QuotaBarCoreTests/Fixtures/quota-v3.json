@@ -1,0 +1,168 @@
+{
+  "generatedAt": "2026-01-15T12:00:00.000Z",
+  "schemaVersion": 3,
+  "providers": [
+    {
+      "provider": "codex",
+      "label": "Codex",
+      "source": "cli-rpc",
+      "plan": "plus",
+      "windows": [
+        {
+          "id": "five_hour",
+          "label": "session",
+          "kind": "session",
+          "percentUsed": 42,
+          "percentRemaining": 58,
+          "resetsAt": "2026-01-15T15:00:00.000Z",
+          "windowSeconds": 18000,
+          "pace": {
+            "status": "on_pace",
+            "timeRemainingPercent": 60,
+            "elapsedPercent": 40,
+            "reservePercentPoints": -2,
+            "burnMultiple": 1.05,
+            "projectedExhaustedAt": "2026-01-15T16:45:00.000Z",
+            "projectionConfidence": "established",
+            "projectionBasis": "cycle_average",
+            "cycleBasis": "window_seconds",
+            "cycleSeconds": 18000
+          }
+        },
+        {
+          "id": "weekly",
+          "label": "week",
+          "kind": "weekly",
+          "percentUsed": 53,
+          "percentRemaining": 47,
+          "resetsAt": "2026-01-20T12:00:00.000Z",
+          "windowSeconds": 604800,
+          "pace": {
+            "status": "ahead",
+            "timeRemainingPercent": 62,
+            "elapsedPercent": 38,
+            "reservePercentPoints": -15,
+            "burnMultiple": 1.39,
+            "projectedExhaustedAt": "2026-01-18T10:00:00.000Z",
+            "projectionConfidence": "established",
+            "projectionBasis": "cycle_average",
+            "cycleBasis": "window_seconds",
+            "cycleSeconds": 604800
+          }
+        }
+      ],
+      "quotaSemantics": {
+        "status": "known",
+        "description": "Account windows jointly bound all models.",
+        "effectiveAvailability": [
+          {
+            "scope": "all_models",
+            "status": "known",
+            "effectivePercentRemaining": 47,
+            "boundedBy": ["five_hour", "weekly"],
+            "limitingWindowIds": ["weekly"],
+            "pace": {
+              "status": "mixed",
+              "aheadWindowIds": ["weekly"],
+              "onPaceWindowIds": ["five_hour"],
+              "worstReservePercentPoints": -15,
+              "worstReserveWindowId": "weekly"
+            },
+            "runway": {
+              "status": "projected_exhaustion",
+              "usableRunwaySeconds": 165600,
+              "projectedExhaustedAt": "2026-01-18T10:00:00.000Z",
+              "limitingWindowId": "weekly",
+              "projectionConfidence": "established",
+              "projectionBasis": "cycle_average"
+            }
+          }
+        ]
+      },
+      "credits": {
+        "remaining": 12.5,
+        "unlimited": false,
+        "unit": "usd"
+      },
+      "state": {
+        "status": "fresh",
+        "stale": false,
+        "refreshedAt": "2026-01-15T11:59:58.000Z",
+        "authStatus": "usable",
+        "sourcesTried": ["cli-rpc"]
+      }
+    },
+    {
+      "provider": "cursor",
+      "label": "Cursor",
+      "source": "api",
+      "plan": "pro",
+      "windows": [
+        {
+          "id": "included_usage",
+          "label": "included usage",
+          "kind": "monthly",
+          "percentUsed": 35,
+          "percentRemaining": 65,
+          "resetText": "next month",
+          "pace": {
+            "status": "unknown",
+            "reason": "unsupported_period"
+          }
+        },
+        {
+          "id": "api_usage",
+          "label": "API usage",
+          "kind": "monthly",
+          "percentUsed": 10,
+          "percentRemaining": 90
+        }
+      ],
+      "quotaSemantics": {
+        "status": "unknown",
+        "description": "The relationship between reported windows is unresolved.",
+        "effectiveAvailability": [
+          {
+            "scope": "unresolved",
+            "status": "unknown",
+            "boundedBy": [],
+            "pace": {
+              "status": "unknown",
+              "unknownWindowIds": ["included_usage", "api_usage"]
+            },
+            "runway": {
+              "status": "unknown",
+              "unmeasurableWindowIds": ["included_usage", "api_usage"]
+            }
+          }
+        ],
+        "unresolvedWindowIds": ["included_usage", "api_usage"]
+      },
+      "state": {
+        "status": "fresh",
+        "stale": false,
+        "refreshedAt": "2026-01-15T11:59:59.000Z",
+        "sourcesTried": ["api"]
+      }
+    },
+    {
+      "provider": "claude",
+      "label": "Claude",
+      "source": "unavailable",
+      "windows": [],
+      "quotaSemantics": {
+        "status": "unknown",
+        "description": "No quota windows are available.",
+        "effectiveAvailability": []
+      },
+      "state": {
+        "status": "auth_required",
+        "stale": false,
+        "error": "Sign-in required",
+        "authStatus": "unusable",
+        "sourcesTried": ["oauth"]
+      }
+    }
+  ],
+  "help": ["Synthetic schema fixture"]
+}
