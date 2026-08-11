@@ -61,7 +61,7 @@ The app has no Dock icon. Its menu-bar ring refreshes at launch, on **⌘R** or 
 
 `quota-axi --json` is the only quota source. Quota AXI continues to read the user's existing provider credential sources and contact provider endpoints; Quota Bar does not read, store, copy, import, or log provider credentials.
 
-Quota Bar does not request Quota AXI's `--full` output, so account identity and source-attempt details are omitted. The last decoded report (quota percentages and provider state, not credentials) is stored with user-only permissions at `~/Library/Application Support/QuotaBar/snapshot-v3.json`. No live quota output, machine path, token, or credential is committed in this repository's tests or fixtures.
+Quota Bar does not request Quota AXI's `--full` output, so account identity is omitted. The last decoded report (quota percentages, provider state, and collection-source labels, not credentials) is stored with user-only permissions at `~/Library/Application Support/QuotaBar/snapshot-v3.json`. No live quota output, machine path, token, or credential is committed in this repository's tests or fixtures.
 
 There are no first-release notifications, alerts, analytics, or third-party relays.
 
