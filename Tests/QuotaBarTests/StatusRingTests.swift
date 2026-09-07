@@ -1,6 +1,7 @@
 import AppKit
 import QuotaBarCore
 import Testing
+
 @testable import QuotaBar
 
 @MainActor
@@ -25,7 +26,9 @@ struct StatusRingTests {
         let sample = try #require(bitmap.colorAt(x: 10 * scale, y: 2 * scale))
         let rgb = try #require(sample.usingColorSpace(.deviceRGB))
         #expect(rgb.alphaComponent > 0.9)
-        for (actual, value) in zip([rgb.redComponent, rgb.greenComponent, rgb.blueComponent], expected) {
+        for (actual, value) in zip(
+          [rgb.redComponent, rgb.greenComponent, rgb.blueComponent], expected)
+        {
           #expect(abs(actual - value / 255) < 0.02)
         }
         #expect(bitmap.colorAt(x: 10 * scale, y: 9 * scale)?.alphaComponent == 0)
@@ -47,27 +50,35 @@ struct StatusRingTests {
     let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     defer { try? FileManager.default.removeItem(at: directory) }
     let cache = FileSnapshotCache(fileURL: directory.appendingPathComponent("snapshot.json"))
-    let defaults = try #require(UserDefaults(suiteName: "local.QuotaBar.UnitTests.\(UUID().uuidString)"))
+    let defaults = try #require(
+      UserDefaults(suiteName: "local.QuotaBar.UnitTests.\(UUID().uuidString)"))
     let empty = AppModel(cache: cache, defaults: defaults)
     #expect(empty.headlineSignal == .neutral)
     #expect(empty.headlineAccessibilityLabel.contains("No effective quota is known"))
     let provider = ProviderQuota(
       provider: "synthetic", label: "Synthetic", source: .api, windows: [],
-      quotaSemantics: QuotaSemantics(status: .known, description: "Synthetic",
-        effectiveAvailability: [EffectiveAvailability(scope: "all", status: .known,
-          effectivePercentRemaining: 0)]),
+      quotaSemantics: QuotaSemantics(
+        status: .known, description: "Synthetic",
+        effectiveAvailability: [
+          EffectiveAvailability(
+            scope: "all", status: .known,
+            effectivePercentRemaining: 0)
+        ]),
       state: ProviderState(status: .authRequired, stale: false, sourcesTried: ["test"]))
     let report = QuotaAxiResponse(generatedAt: "2026-01-01T00:00:00Z", providers: [provider])
     #expect(QuotaSummary.tightestKnown(in: report) == nil)
-    #expect(QuotaSignal.forRemaining(QuotaSummary.tightestKnown(in: report)?
-      .availability.effectivePercentRemaining) == .neutral)
+    #expect(
+      QuotaSignal.forRemaining(
+        QuotaSummary.tightestKnown(in: report)?
+          .availability.effectivePercentRemaining) == .neutral)
     let current = ProviderQuota(
       provider: "synthetic", label: "Synthetic", source: .api, windows: [],
       quotaSemantics: provider.quotaSemantics,
       state: ProviderState(status: .fresh, stale: false, sourcesTried: ["test"]))
     let knownReport = QuotaAxiResponse(
       generatedAt: "2026-01-01T00:00:00Z", providers: [current])
-    #expect(QuotaSummary.tightestKnown(in: knownReport)?.availability.effectivePercentRemaining == 0)
+    #expect(
+      QuotaSummary.tightestKnown(in: knownReport)?.availability.effectivePercentRemaining == 0)
     try cache.save(StoredSnapshot(savedAt: Date(timeIntervalSince1970: 0), report: knownReport))
     let stale = AppModel(cache: cache, defaults: defaults)
     #expect(stale.headlineSignal == .neutral)
