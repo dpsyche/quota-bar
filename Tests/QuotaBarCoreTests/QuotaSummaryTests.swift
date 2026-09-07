@@ -11,6 +11,8 @@ struct QuotaSummaryTests {
     #expect(QuotaSignal.forRemaining(19.999) == .critical)
     #expect(QuotaSignal.forRemaining(0) == .critical)
     #expect(QuotaSignal.forRemaining(nil) == .neutral)
+    #expect(QuotaSignal.forRemaining(.nan) == .neutral)
+    #expect(QuotaSignal.forRemaining(.infinity) == .neutral)
   }
 
   @Test

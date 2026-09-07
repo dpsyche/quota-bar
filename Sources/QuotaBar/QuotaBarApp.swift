@@ -6,9 +6,16 @@ struct QuotaBarApp: App {
   @StateObject private var model: AppModel
 
   init() {
-    let model = AppModel()
+    #if QUOTABAR_NATIVE_TEST
+      let model = NativeLabelProbe.makeModel()
+    #else
+      let model = AppModel()
+    #endif
     _model = StateObject(wrappedValue: model)
     model.start()
+    #if QUOTABAR_NATIVE_TEST
+      NativeLabelProbe.start(model: model)
+    #endif
   }
 
   var body: some Scene {
@@ -16,6 +23,9 @@ struct QuotaBarApp: App {
       QuotaPopoverView()
         .environmentObject(model)
         .preferredColorScheme(.dark)
+        #if QUOTABAR_NATIVE_TEST
+          .onAppear { NativeLabelProbe.popoverAppeared = true }
+        #endif
     } label: {
       StatusRingView(signal: model.headlineSignal)
         .accessibilityLabel(model.headlineAccessibilityLabel)

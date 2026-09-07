@@ -21,6 +21,10 @@ let package = Package(
       dependencies: ["QuotaBarCore"]
     ),
     .testTarget(
+      name: "QuotaBarTests",
+      dependencies: ["QuotaBar", .product(name: "Testing", package: "swift-testing")]
+    ),
+    .testTarget(
       name: "QuotaBarCoreTests",
       dependencies: [
         "QuotaBarCore",

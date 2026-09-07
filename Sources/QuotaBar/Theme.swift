@@ -1,3 +1,4 @@
+import AppKit
 import QuotaBarCore
 import SwiftUI
 
@@ -26,11 +27,39 @@ struct StatusRingView: View {
   let signal: QuotaSignal
 
   var body: some View {
-    Circle()
-      .stroke(signal.color, lineWidth: 3)
-      .frame(width: 14, height: 14)
-      .padding(.horizontal, 3)
-      .contentShape(Rectangle())
+    Image(nsImage: StatusRingImage.make(signal: signal))
+      .renderingMode(.original)
+  }
+}
+
+/// Explicit 1x/2x representations keep the three-point stroke inside the canvas.
+/// MenuBarExtra needs an Image leaf: a Shape can bridge to an empty native button.
+@MainActor
+enum StatusRingImage {
+  static func make(signal: QuotaSignal) -> NSImage {
+    let size = NSSize(width: 20, height: 18)
+    let image = NSImage(size: size)
+    for scale in [1, 2] {
+      let bitmap = NSBitmapImageRep(
+        bitmapDataPlanes: nil, pixelsWide: 20 * scale, pixelsHigh: 18 * scale,
+        bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+        colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0
+      )!
+      bitmap.size = size
+      NSGraphicsContext.saveGraphicsState()
+      let context = NSGraphicsContext(bitmapImageRep: bitmap)!
+      NSGraphicsContext.current = context
+      // NSGraphicsContext derives the pixel scale from bitmap.size.
+      context.cgContext.clear(CGRect(origin: .zero, size: size))
+      NSColor(signal.color).setStroke()
+      let ring = NSBezierPath(ovalIn: NSRect(x: 3.5, y: 2.5, width: 13, height: 13))
+      ring.lineWidth = 3
+      ring.stroke()
+      NSGraphicsContext.restoreGraphicsState()
+      image.addRepresentation(bitmap)
+    }
+    image.isTemplate = false
+    return image
   }
 }
 

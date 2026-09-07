@@ -31,9 +31,22 @@ No Xcode UI steps are needed:
 ```sh
 swift test
 ./scripts/build-app.sh
+# In a logged-in macOS desktop session:
+./scripts/test-native-label.sh
 ```
 
 The packaging script makes an ad-hoc-signed app at `build/QuotaBar.app` and verifies its property list and signature. Set `CONFIGURATION=debug` to package a debug build; release is the default.
+
+The native regression launches a uniquely identified, signed disposable app under `build/native-label.*`, using the real scene/label/popover with a delayed synthetic collector, isolated cache, and volatile test preferences. It asserts a nonempty native ring image during loading, changed pixels after refresh, and popover appearance after invoking the button action. It exits within a bounded deadline and never launches the live collector or modifies the installed app. Test instrumentation is excluded from normal builds. `swift test` also checks ring colors and stroke bounds at 1x/2x, headline policy, and core behavior.
+
+Native button/pixel/action checks are **not physical-screen acceptance**. For safe manual acceptance, run `./scripts/test-native-label.sh --manual` (the synthetic probe remains open):
+
+1. Observe a gray loading ring, then yellow after collection, with no adjacent text.
+2. Click that ring with the pointer; verify quota cards, dismissal/reopening, and the refresh button. Refresh must stay responsive during the three-second synthetic delay.
+3. Check visibility and contrast on light/dark menu bars and available 1x/2x displays, including an uncrowded menu bar near the notch. Do not change permissions or display configuration for automation.
+4. Quit only the synthetic probe from its popover. Its printed bundle/cache directory is disposable.
+
+This script requests no Screen Recording or Accessibility grants. Real pointer interaction, display compositing, and visual approval remain manual; passing native checks or screenshots alone do not establish them.
 
 ## Install and launch
 
