@@ -7,6 +7,8 @@
   enum NativeLabelProbe {
     static var popoverAppeared = false
     private static var directory: URL!
+    private static var testDefaults: UserDefaults!
+    private static var preferencesName: String!
 
     static func makeModel() -> AppModel {
       guard (2...3).contains(CommandLine.arguments.count),
@@ -15,7 +17,9 @@
       else { fatalError("Native test requires an isolated bundle and directory") }
       directory = URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
       // Foundation rejects a suite equal to this process's bundle identifier.
-      let defaults = UserDefaults(suiteName: identifier + ".volatile-inputs")!
+      preferencesName = identifier + ".volatile-inputs"
+      let defaults = UserDefaults(suiteName: preferencesName)!
+      testDefaults = defaults
       defaults.setVolatileDomain(
         [AppModel.configuredPathKey: directory.appendingPathComponent("collector").path],
         forName: UserDefaults.argumentDomain)
@@ -54,6 +58,7 @@
                 if popoverAppeared {
                   log("PASS action: real quota popover appeared")
                   log("PASS native label regression (not physical-screen evidence)")
+                  testDefaults.removePersistentDomain(forName: preferencesName)
                   NSApp.terminate(nil)
                   return
                 }
@@ -64,6 +69,7 @@
           throw Failure(message: "native label deadline exceeded")
         } catch {
           log("FAIL \(error)")
+          testDefaults.removePersistentDomain(forName: preferencesName)
           NSApp.terminate(nil)
         }
       }

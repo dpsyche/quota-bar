@@ -14,8 +14,18 @@ struct QuotaPopoverView: View {
             failureBanner(message)
           }
 
-          if let report = model.state.report {
-            ForEach(report.providers, id: \.provider) { provider in
+          if model.state.report != nil {
+            if let message = model.emptyProviderMessage {
+              Text(message)
+                .font(.system(size: 12))
+                .foregroundStyle(QuotaPalette.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
+                .modifier(QuotaCardBackground())
+                .accessibilityIdentifier("signed-in-empty-state")
+            }
+            ForEach(model.visibleProviders, id: \.provider) { provider in
               ProviderCardView(provider: provider, globallyStale: model.state.isStale)
             }
           } else if !model.isRefreshing {
@@ -184,6 +194,7 @@ struct QuotaPopoverView: View {
 }
 
 private struct ProviderCardView: View {
+  @EnvironmentObject private var model: AppModel
   let provider: ProviderQuota
   let globallyStale: Bool
 
@@ -248,6 +259,36 @@ private struct ProviderCardView: View {
           }
         }
         .accessibilityElement(children: .combine)
+
+        VStack(spacing: 4) {
+          Button {
+            model.moveProvider(provider.provider, by: -1)
+          } label: {
+            Image(systemName: "arrow.up")
+              .frame(width: 20, height: 18)
+          }
+          .disabled(model.visibleProviderIDs.first == provider.provider)
+          .help("Move \(provider.label) earlier")
+          .accessibilityLabel("Move \(provider.label) earlier")
+
+          Button {
+            model.moveProvider(provider.provider, by: 1)
+          } label: {
+            Image(systemName: "arrow.down")
+              .frame(width: 20, height: 18)
+          }
+          .disabled(model.visibleProviderIDs.last == provider.provider)
+          .help("Move \(provider.label) later")
+          .accessibilityLabel("Move \(provider.label) later")
+        }
+        .buttonStyle(.borderless)
+        .controlSize(.small)
+      }
+
+      if model.presentation.signInIsUncertain(provider) {
+        Text("Sign-in unconfirmed · previously signed in")
+          .font(.system(size: 10.5))
+          .foregroundStyle(QuotaPalette.neutral)
       }
 
       quotaMeter

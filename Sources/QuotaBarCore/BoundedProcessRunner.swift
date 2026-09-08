@@ -41,7 +41,8 @@ public struct BoundedProcessRunner: Sendable {
     arguments: [String],
     environment: [String: String]? = nil,
     timeout: TimeInterval,
-    maximumOutputBytes: Int
+    maximumOutputBytes: Int,
+    acceptedExitCodes: Set<Int32> = [0]
   ) throws -> ProcessOutput {
     precondition(timeout > 0)
     precondition(maximumOutputBytes > 0)
@@ -100,7 +101,7 @@ public struct BoundedProcessRunner: Sendable {
     if accumulator.exceededLimit {
       throw ProcessRunnerError.outputLimitExceeded
     }
-    if process.terminationStatus != 0 {
+    if !acceptedExitCodes.contains(process.terminationStatus) {
       throw ProcessRunnerError.unsuccessfulExit(process.terminationStatus)
     }
 
