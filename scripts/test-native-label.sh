@@ -27,7 +27,9 @@ if [[ "${1:-}" == --manual ]]; then
   exit 0
 fi
 # -W waits only for this isolated, self-terminating app. External watchdog bounds launch too.
-open -n -W "$APP" --args "$LAB" &
+EVIDENCE="${QUOTABAR_TEST_EVIDENCE_DIRECTORY:-$LAB}"
+mkdir -p "$EVIDENCE"
+open -n -W "$APP" --args "$LAB" "$EVIDENCE" &
 LAUNCH=$!
 for ((i=0; i<20; i++)); do
   if ! kill -0 "$LAUNCH" 2>/dev/null; then break; fi
