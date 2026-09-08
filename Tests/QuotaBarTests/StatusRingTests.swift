@@ -50,8 +50,9 @@ struct StatusRingTests {
     let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     defer { try? FileManager.default.removeItem(at: directory) }
     let cache = FileSnapshotCache(fileURL: directory.appendingPathComponent("snapshot.json"))
-    let defaults = try #require(
-      UserDefaults(suiteName: "local.QuotaBar.UnitTests.\(UUID().uuidString)"))
+    let preferenceDomain = "local.QuotaBar.UnitTests.\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: preferenceDomain))
+    defer { defaults.removePersistentDomain(forName: preferenceDomain) }
     let empty = AppModel(cache: cache, defaults: defaults)
     #expect(empty.headlineSignal == .neutral)
     #expect(empty.headlineAccessibilityLabel.contains("No effective quota is known"))

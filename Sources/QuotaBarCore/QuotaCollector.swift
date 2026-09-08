@@ -78,7 +78,8 @@ public struct QuotaCollector: Sendable {
           homeDirectory: homeDirectory
         ),
         timeout: timeout,
-        maximumOutputBytes: maximumOutputBytes
+        maximumOutputBytes: maximumOutputBytes,
+        acceptedExitCodes: [0, 1]
       )
     } catch let error as ProcessRunnerError {
       throw QuotaCollectorError.process(error)
@@ -90,7 +91,22 @@ public struct QuotaCollector: Sendable {
     do {
       report = try JSONDecoder().decode(QuotaAxiResponse.self, from: output.standardOutput)
     } catch {
+      if output.exitCode != 0 {
+        throw QuotaCollectorError.process(.unsuccessfulExit(output.exitCode))
+      }
       throw QuotaCollectorError.invalidResponse
+    }
+
+    // quota-axi loadQuota exits 1 with a valid report when all providers failed.
+    // Consume those structured auth states rather than preserving a signed-in
+    // snapshot forever after the last provider signs out. Other failures stay failures.
+    if output.exitCode == 1
+      && (report.providers.isEmpty
+        || report.providers.contains {
+          $0.state.status == .fresh || $0.state.status == .stale
+        })
+    {
+      throw QuotaCollectorError.process(.unsuccessfulExit(1))
     }
 
     guard report.schemaVersion == 3 else {

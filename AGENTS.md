@@ -5,6 +5,7 @@ This file is the project's committed home for project-intrinsic agent knowledge:
 - Use `swift test` for the focused core suite and `./scripts/build-app.sh` for the release bundle/signature check; see `README.md` for the install workflow.
 - Keep quota policy and schema handling in `Sources/QuotaBarCore`; synthetic schema fixtures belong in `Tests/QuotaBarCoreTests/Fixtures` and must never contain live quota, identity, credential, token, or machine-path data.
 - The first-release product and privacy contract is documented in `README.md`; in particular, preserve truthful unknown/stale states and do not add notifications.
+- `docs/provider-ordering.md` documents stable ordering and the structured auth evidence/ambiguity policy. Keep those presentation decisions separate from `QuotaSummary` and ring policy.
 
 ## Maintaining this file
 

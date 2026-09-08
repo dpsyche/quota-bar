@@ -1,6 +1,6 @@
 # Quota Bar
 
-Quota Bar is a native, menu-bar-only macOS app for seeing local AI-service quota without running a terminal command. Its ring shows the tightest **known effective** quota; click it for exact percentages, limiting windows, resets, pace, runway, and collection/authentication state for every service reported by [Quota AXI](https://www.npmjs.com/package/quota-axi).
+Quota Bar is a native, menu-bar-only macOS app for seeing local AI-service quota without running a terminal command. Its ring shows the tightest **known effective** quota; click it for exact percentages, limiting windows, resets, pace, runway, and collection/authentication state for signed-in services reported by [Quota AXI](https://www.npmjs.com/package/quota-axi).
 
 - Green: 50% remaining or more
 - Yellow: 20–49% remaining
@@ -8,6 +8,10 @@ Quota Bar is a native, menu-bar-only macOS app for seeing local AI-service quota
 - Gray: unavailable, unknown, authentication-required, or stale
 
 Unknown values are never treated as zero. Quota Bar sends no notifications or alerts.
+
+Use the **up/down arrow buttons** on each provider tile to move it earlier or later. The buttons have keyboard-accessible actions and provider-specific accessibility labels; boundary moves are disabled. Order is saved locally across popover reopening, refresh, and app relaunch. Hidden or temporarily absent providers keep their place, and new providers append in collector order.
+
+Only providers with structured evidence of sign-in are shown by default. Confirmed authentication-required or Keychain-access-required providers are hidden. Previously confirmed providers with ambiguous evidence remain visible as **Sign-in unconfirmed**, with quota uncertainty/staleness still explicit. Ambiguity alone never admits a never-confirmed provider, and refreshable credentials are not treated as sign-out. If none qualify, the popover explains how to sign in and refresh. Filtering and ordering do not change the ring's quota calculation.
 
 ## Requirements and setup
 
@@ -37,7 +41,7 @@ swift test
 
 The packaging script makes an ad-hoc-signed app at `build/QuotaBar.app` and verifies its property list and signature. Set `CONFIGURATION=debug` to package a debug build; release is the default.
 
-The native regression launches a uniquely identified, signed disposable app under `build/native-label.*`, using the real scene/label/popover with a delayed synthetic collector, isolated cache, and volatile test preferences. It asserts a nonempty native ring image during loading, changed pixels after refresh, and popover appearance after invoking the button action. It exits within a bounded deadline and never launches the live collector or modifies the installed app. Test instrumentation is excluded from normal builds. `swift test` also checks ring colors and stroke bounds at 1x/2x, headline policy, and core behavior.
+The native regression launches a uniquely identified, signed disposable app under `build/native-label.*`, using the real scene/label/popover with a delayed synthetic collector, isolated cache, and disposable test preferences (the executable path is a volatile input). It asserts a nonempty native ring image during loading, changed pixels after refresh, and popover appearance after invoking the button action. It exits within a bounded deadline and never launches the live collector or modifies the installed app. Test instrumentation is excluded from normal builds. `swift test` also checks ring colors and stroke bounds at 1x/2x, headline policy, and core behavior.
 
 Native button/pixel/action checks are **not physical-screen acceptance**. For safe manual acceptance, run `./scripts/test-native-label.sh --manual` (the synthetic probe remains open):
 
@@ -45,6 +49,8 @@ Native button/pixel/action checks are **not physical-screen acceptance**. For sa
 2. Click that ring with the pointer; verify quota cards, dismissal/reopening, and the refresh button. Refresh must stay responsive during the three-second synthetic delay.
 3. Check visibility and contrast on light/dark menu bars and available 1x/2x displays, including an uncrowded menu bar near the notch. Do not change permissions or display configuration for automation.
 4. Quit only the synthetic probe from its popover. Its printed bundle/cache directory is disposable.
+
+See [Provider ordering and visibility](docs/provider-ordering.md) for the structured auth mapping, focused tests, and optional safe arrow/persistence checks.
 
 This script requests no Screen Recording or Accessibility grants. Real pointer interaction, display compositing, and visual approval remain manual; passing native checks or screenshots alone do not establish them.
 
@@ -67,14 +73,14 @@ The app has no Dock icon. Its menu-bar ring refreshes at launch, on **⌘R** or 
 - **Native shell:** `Sources/QuotaBar` uses the SwiftUI app lifecycle and a window-style `MenuBarExtra`.
 - **Data and policy:** `Sources/QuotaBarCore` owns Quota AXI schema v3 decoding, effective-quota selection, thresholds, executable discovery, bounded process execution, and snapshot state.
 - **Collection:** Quota Bar launches the discovered executable directly with the single argument `--json`; it never invokes a shell. The executable's directory and deterministic local binary locations are added to the child `PATH` so Finder launches can run NVM/npm installations.
-- **Bounds:** a collector run has a 45-second deadline and a combined 2 MiB stdout/stderr limit. Nonzero exits, malformed JSON, unsupported schemas, timeouts, and excess output become in-app collection failures.
+- **Bounds:** a collector run has a 45-second deadline and a combined 2 MiB stdout/stderr limit. Nonzero exits, malformed JSON, unsupported schemas, timeouts, and excess output become in-app collection failures. The exception is Quota AXI's all-providers-failed exit 1 with a valid schema-v3 report: Quota Bar consumes its structured states so signing out of the last provider does not retain an obsolete signed-in snapshot.
 - **Truthful fallback:** only current, known `effectiveAvailability` values contribute to the ring. Unresolved relationships remain unknown and cards show each reported window separately. A transient failure retains the last successful snapshot, turns the ring gray, and labels the data stale with its timestamp.
 
 ## Data source and privacy
 
 `quota-axi --json` is the only quota source. Quota AXI continues to read the user's existing provider credential sources and contact provider endpoints; Quota Bar does not read, store, copy, import, or log provider credentials.
 
-Quota Bar does not request Quota AXI's `--full` output, so account identity is omitted. The last decoded report (quota percentages, provider state, and collection-source labels, not credentials) is stored with user-only permissions at `~/Library/Application Support/QuotaBar/snapshot-v3.json`. No live quota output, machine path, token, or credential is committed in this repository's tests or fixtures.
+Quota Bar does not request Quota AXI's `--full` output, so account identity is omitted. App preferences store stable provider IDs for tile order and previous positive sign-in evidence, not credentials or identities. The last decoded report (quota percentages, provider state, and collection-source labels, not credentials) is stored with user-only permissions at `~/Library/Application Support/QuotaBar/snapshot-v3.json`. No live quota output, machine path, token, or credential is committed in this repository's tests or fixtures.
 
 There are no first-release notifications, alerts, analytics, or third-party relays.
 
@@ -86,7 +92,7 @@ Open the popover, choose **Choose quota-axi…**, and select the installed execu
 
 ### A service says authentication or Keychain access is required
 
-Quota Bar intentionally uses existing Quota AXI/provider credential sources and does not perform provider sign-in. Follow the provider state shown in the card. For Claude, Quota AXI may require its documented one-time `quota-axi --allow-keychain-prompt` approval before unattended reads can use an existing Keychain credential.
+Quota Bar intentionally uses existing Quota AXI/provider credential sources and does not perform provider sign-in. Authentication-required providers are hidden by default. Sign in through the provider's existing app or CLI, then refresh Quota Bar. For Claude, Quota AXI may require its documented one-time `quota-axi --allow-keychain-prompt` approval before unattended reads can use an existing Keychain credential.
 
 ### The last snapshot is stale
 

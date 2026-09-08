@@ -58,6 +58,34 @@ struct QuotaCollectorFailureTests {
     }
   }
 
+  @Test
+  func exitOneRequiresACompleteAllFailedSchemaThreeReport() throws {
+    let directory = try CollectorTemporaryDirectory()
+    for (body, expected) in [
+      ("printf 'not-json'; exit 1", QuotaCollectorError.process(.unsuccessfulExit(1))),
+      (
+        "printf '%s' '{\"schemaVersion\":3,\"generatedAt\":\"synthetic\",\"providers\":[]}'; exit 1",
+        .process(.unsuccessfulExit(1))
+      ),
+      (
+        "printf '%s' '{\"schemaVersion\":4,\"generatedAt\":\"synthetic\",\"providers\":[{\"provider\":\"a\",\"label\":\"A\",\"source\":\"api\",\"windows\":[],\"state\":{\"status\":\"auth_required\",\"stale\":false,\"sourcesTried\":[]}}]}'; exit 1",
+        .unsupportedSchema(4)
+      ),
+      (
+        "printf '%s' '{\"schemaVersion\":3,\"generatedAt\":\"synthetic\",\"providers\":[{\"provider\":\"a\",\"label\":\"A\",\"source\":\"api\",\"windows\":[],\"state\":{\"status\":\"fresh\",\"stale\":false,\"sourcesTried\":[]}}]}'; exit 1",
+        .process(.unsuccessfulExit(1))
+      ),
+    ] {
+      let executable = try makeExecutable(in: directory.url, body: body)
+      do {
+        _ = try QuotaCollector(timeout: 2).collect(configuredPath: executable.path)
+        Issue.record("Expected rejection")
+      } catch {
+        #expect(error as? QuotaCollectorError == expected)
+      }
+    }
+  }
+
   private func makeExecutable(in directory: URL, body: String) throws -> URL {
     let url = directory.appendingPathComponent("quota-axi-\(UUID().uuidString)")
     let script = "#!/bin/sh\n\(body)\n"

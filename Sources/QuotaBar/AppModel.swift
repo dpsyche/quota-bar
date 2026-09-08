@@ -10,6 +10,7 @@ final class AppModel: ObservableObject {
   @Published private(set) var state: QuotaDisplayState
   @Published private(set) var isRefreshing = false
   @Published private(set) var executableSource: ExecutableSource?
+  @Published private(set) var presentation: ProviderPresentation
 
   private let collector: QuotaCollector
   private let cache: FileSnapshotCache
@@ -24,7 +25,11 @@ final class AppModel: ObservableObject {
     self.collector = collector
     self.cache = cache
     self.defaults = defaults
-    state = RefreshStateReducer.initial(cachedSnapshot: cache.load())
+    let initial = RefreshStateReducer.initial(cachedSnapshot: cache.load())
+    state = initial
+    var presentation = ProviderPresentation(defaults: defaults)
+    presentation.reconcile(initial.report?.providers ?? [])
+    self.presentation = presentation
   }
 
   deinit {
@@ -51,6 +56,29 @@ final class AppModel: ObservableObject {
     }
     return
       "Quota \(headlineSignal.accessibilityName). \(percentage.formattedQuotaPercentage) percent remaining."
+  }
+
+  var visibleProviders: [ProviderQuota] {
+    presentation.visibleProviders(in: state.report?.providers ?? [])
+  }
+
+  var visibleProviderIDs: [String] { visibleProviders.map(\.provider) }
+
+  var emptyProviderMessage: String? {
+    state.report != nil && visibleProviders.isEmpty ? ProviderPresentation.emptyMessage : nil
+  }
+
+  @discardableResult
+  func moveProvider(_ source: String, to target: String) -> Bool {
+    presentation.move(source, to: target, visibleIDs: visibleProviderIDs)
+  }
+
+  func moveProvider(_ source: String, by offset: Int) {
+    let ids = visibleProviderIDs
+    guard let index = ids.firstIndex(of: source), ids.indices.contains(index + offset) else {
+      return
+    }
+    moveProvider(source, to: ids[index + offset])
   }
 
   var configuredPath: String? {
@@ -87,6 +115,7 @@ final class AppModel: ObservableObject {
     switch result {
     case .success(let collection):
       let now = Date()
+      presentation.reconcile(collection.report.providers)
       state = RefreshStateReducer.success(report: collection.report, at: now)
       executableSource = collection.executable.source
       try? cache.save(StoredSnapshot(savedAt: now, report: collection.report))

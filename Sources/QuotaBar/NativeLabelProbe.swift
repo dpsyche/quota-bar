@@ -7,6 +7,8 @@
   enum NativeLabelProbe {
     static var popoverAppeared = false
     private static var directory: URL!
+    private static var testDefaults: UserDefaults!
+    private static var preferencesName: String!
 
     static func makeModel() -> AppModel {
       guard (2...3).contains(CommandLine.arguments.count),
@@ -15,7 +17,9 @@
       else { fatalError("Native test requires an isolated bundle and directory") }
       directory = URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
       // Foundation rejects a suite equal to this process's bundle identifier.
-      let defaults = UserDefaults(suiteName: identifier + ".volatile-inputs")!
+      preferencesName = identifier + ".volatile-inputs"
+      let defaults = UserDefaults(suiteName: preferencesName)!
+      testDefaults = defaults
       defaults.setVolatileDomain(
         [AppModel.configuredPathKey: directory.appendingPathComponent("collector").path],
         forName: UserDefaults.argumentDomain)
@@ -53,7 +57,9 @@
                 try await Task.sleep(nanoseconds: 100_000_000)
                 if popoverAppeared {
                   log("PASS action: real quota popover appeared")
+                  try await presentationEvidence(model: model, button: button)
                   log("PASS native label regression (not physical-screen evidence)")
+                  testDefaults.removePersistentDomain(forName: preferencesName)
                   NSApp.terminate(nil)
                   return
                 }
@@ -64,6 +70,7 @@
           throw Failure(message: "native label deadline exceeded")
         } catch {
           log("FAIL \(error)")
+          testDefaults.removePersistentDomain(forName: preferencesName)
           NSApp.terminate(nil)
         }
       }
@@ -73,6 +80,73 @@
       guard let view else { return nil }
       if let button = view as? NSStatusBarButton { return button }
       return view.subviews.compactMap { findButton($0) }.first
+    }
+
+    private static func presentationEvidence(model: AppModel, button: NSStatusBarButton)
+      async throws
+    {
+      try await Task.sleep(nanoseconds: 300_000_000)
+      try capturePopover("providers-before")
+      let original = model.visibleProviderIDs
+      try require(original.count >= 2, "fixture needs two signed-in providers")
+      model.moveProvider(original[1], by: -1)
+      var expected = original
+      expected.swapAt(0, 1)
+      try require(model.visibleProviderIDs == expected, "arrow model route did not reorder")
+      button.performClick(nil)
+      try await Task.sleep(nanoseconds: 200_000_000)
+      button.performClick(nil)
+      try await Task.sleep(nanoseconds: 300_000_000)
+      try require(model.visibleProviderIDs == expected, "popover reopen lost order")
+      try capturePopover("providers-reordered-reopened")
+      log(
+        "PASS presentation: arrow model route \(original) -> \(expected), retained on native popover reopen"
+      )
+
+      let ambiguous = ProviderQuota(
+        provider: original[0], label: "Synthetic prior sign-in", source: .api, windows: [],
+        state: ProviderState(status: .error, stale: false))
+      try await refreshFixture([ambiguous], model: model)
+      try require(model.visibleProviderIDs == [original[0]], "prior sign-in was hidden")
+      try require(model.presentation.signInIsUncertain(ambiguous), "missing ambiguity state")
+      try capturePopover("sign-in-unconfirmed")
+      let signedOut = ProviderQuota(
+        provider: original[0], label: "Synthetic prior sign-in", source: .api, windows: [],
+        state: ProviderState(status: .authRequired, stale: false))
+      try await refreshFixture([signedOut], model: model)
+      try require(model.emptyProviderMessage != nil, "missing signed-out empty state")
+      try capturePopover("signed-out-empty")
+      log(
+        "PASS presentation: transient error retained prior sign-in with unknown quota; auth-required selected empty state"
+      )
+    }
+
+    private static func refreshFixture(_ providers: [ProviderQuota], model: AppModel) async throws {
+      let report = QuotaAxiResponse(generatedAt: "2026-01-01T00:00:00Z", providers: providers)
+      try JSONEncoder().encode(report).write(to: directory.appendingPathComponent("fixture.json"))
+      await model.refresh()
+      try await Task.sleep(nanoseconds: 200_000_000)
+    }
+
+    private static func capturePopover(_ name: String) throws {
+      guard
+        let view = NSApp.windows.first(where: {
+          $0.isVisible && ($0.contentView?.bounds.width ?? 0) >= 400
+            && ($0.contentView?.bounds.height ?? 0) >= 600
+        })?.contentView
+      else { throw Failure(message: "no rendered popover for evidence") }
+      view.layoutSubtreeIfNeeded()
+      guard let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) else {
+        throw Failure(message: "popover bitmap unavailable")
+      }
+      view.cacheDisplay(in: view.bounds, to: bitmap)
+      guard let png = bitmap.representation(using: .png, properties: [:]) else {
+        throw Failure(message: "popover PNG unavailable")
+      }
+      let evidenceDirectory =
+        CommandLine.arguments.count == 3
+        ? URL(fileURLWithPath: CommandLine.arguments[2], isDirectory: true) : directory!
+      try png.write(to: evidenceDirectory.appendingPathComponent(name + ".png"))
     }
 
     private static func pixels(_ button: NSStatusBarButton) throws -> Data {
