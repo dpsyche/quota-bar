@@ -120,6 +120,35 @@ struct ProviderPresentationTests {
     #expect(state.order == ["known", "new"])
   }
 
+  @Test
+  func omittedDisplayMetadataDoesNotChangeSignInEvidenceOrStableIdentity() throws {
+    let preferences = try PresentationPreferences()
+    defer { preferences.remove() }
+    var state = ProviderPresentation(defaults: preferences.defaults)
+    let confirmed = ProviderQuota(
+      provider: "codex", windows: [],
+      state: ProviderState(status: .unavailable, stale: false, authStatus: .usable))
+    let unknown = ProviderQuota(
+      provider: "new-provider", source: .unknown, windows: [],
+      state: ProviderState(status: .unavailable, stale: false))
+    let denied = ProviderQuota(
+      provider: "claude", windows: [],
+      state: ProviderState(status: .authRequired, stale: false, authStatus: .usable))
+    state.reconcile([confirmed, unknown, denied])
+    #expect(state.visibleProviders(in: [confirmed, unknown, denied]).map(\.provider) == ["codex"])
+    #expect(state.order == ["codex", "new-provider", "claude"])
+    #expect(confirmed.displayLabel == "Codex")
+    #expect(confirmed.sourceLabel == nil)
+    #expect(unknown.displayLabel == "new-provider")
+    #expect(unknown.sourceLabel == nil)
+    #expect(denied.displayLabel == "Claude")
+    let custom = ProviderQuota(
+      provider: "codex", label: "Reported label", source: .api, windows: [],
+      state: ProviderState(status: .fresh, stale: false))
+    #expect(custom.displayLabel == "Reported label")
+    #expect(custom.sourceLabel == "API")
+  }
+
   private func provider(
     _ id: String, status: ProviderStatus = .fresh,
     auth: ProviderAuthStatus? = nil, reason: ProviderStateReason? = nil

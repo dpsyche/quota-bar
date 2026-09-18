@@ -1,5 +1,40 @@
 import Foundation
 
+/// Display fallbacks for metadata omitted from Quota AXI's default JSON tier.
+/// These labels do not establish provenance, sign-in, or quota availability.
+extension ProviderQuota {
+  public var displayLabel: String {
+    if let label, !label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+      return label
+    }
+    switch provider {
+    case "claude": return "Claude"
+    case "codex": return "Codex"
+    case "cursor": return "Cursor"
+    case "copilot": return "GitHub Copilot"
+    case "grok": return "Grok"
+    case "kimi": return "Kimi"
+    case "zai": return "Z.AI"
+    case "agy": return "Antigravity"
+    case "alibaba": return "Alibaba"
+    case "opencode-go": return "OpenCode Go"
+    default: return provider
+    }
+  }
+
+  public var sourceLabel: String? {
+    switch source {
+    case .oauth: return "OAuth"
+    case .cliRPC, .cli: return "CLI"
+    case .piOpenAICodex: return "Pi"
+    case .api: return "API"
+    case .web: return "Web"
+    case .cache: return "Cache"
+    case .unavailable, .unknown, nil: return nil
+    }
+  }
+}
+
 /// Presentation only: never feeds the quota summary or ring policy.
 public struct ProviderPresentation {
   public static let orderKey = "ProviderTileOrder.v1"

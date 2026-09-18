@@ -1,0 +1,97 @@
+{
+  "generatedAt": "2026-01-15T12:00:00.000Z",
+  "schemaVersion": 5,
+  "providers": [
+    {
+      "provider": "codex",
+      "plan": "synthetic",
+      "windows": [
+        {
+          "id": "weekly",
+          "label": "week",
+          "kind": "weekly",
+          "percentRemaining": 47,
+          "resetsAt": "2026-01-20T12:00:00.000Z",
+          "pace": {
+            "status": "ahead",
+            "reservePercentPoints": -15,
+            "burnMultiple": 1.39
+          }
+        }
+      ],
+      "quotaSemantics": {
+        "status": "known",
+        "effectiveAvailability": [
+          {
+            "scope": "all_models",
+            "status": "known",
+            "effectivePercentRemaining": 47,
+            "boundedBy": ["weekly"],
+            "limitingWindowIds": ["weekly"],
+            "pace": {
+              "status": "ahead",
+              "aheadWindowIds": ["weekly"],
+              "worstReservePercentPoints": -15,
+              "worstReserveWindowId": "weekly"
+            },
+            "runway": {
+              "status": "projected_exhaustion",
+              "usableRunwaySeconds": 165600,
+              "projectedExhaustedAt": "2026-01-17T10:00:00.000Z",
+              "limitingWindowId": "weekly",
+              "projectionConfidence": "established"
+            },
+            "selection": { "status": "known", "spendPriority": -1 }
+          }
+        ]
+      },
+      "state": { "status": "fresh", "stale": false, "authStatus": "usable" }
+    },
+    {
+      "provider": "cursor",
+      "windows": [
+        { "id": "included", "label": "included", "kind": "monthly", "percentRemaining": 70 },
+        { "id": "shared", "label": "shared", "kind": "monthly", "percentRemaining": 0 },
+        { "id": "unmeasured", "label": "unmeasured", "kind": "unknown" }
+      ],
+      "quotaSemantics": {
+        "status": "unknown",
+        "effectiveAvailability": [
+          {
+            "scope": "unresolved",
+            "status": "unknown",
+            "boundedBy": ["included", "shared"],
+            "boundConflict": { "exhaustedWindowIds": ["shared"], "liveWindowIds": ["included"] },
+            "pace": { "status": "unknown", "unknownWindowIds": ["shared"] },
+            "runway": { "status": "unknown", "unmeasurableWindowIds": ["shared"] },
+            "selection": { "status": "unknown", "unmeasurableWindowIds": ["shared"] }
+          }
+        ],
+        "unresolvedWindowIds": ["included", "shared", "unmeasured"]
+      },
+      "state": { "status": "fresh", "stale": false, "authStatus": "usable" }
+    },
+    {
+      "provider": "kimi",
+      "windows": [
+        { "id": "session", "label": "session", "kind": "session", "percentRemaining": 3,
+          "pace": { "status": "unknown", "reason": "stale" } }
+      ],
+      "quotaSemantics": {
+        "status": "known",
+        "effectiveAvailability": [
+          { "scope": "all_models", "status": "known", "effectivePercentRemaining": 3,
+            "boundedBy": ["session"], "limitingWindowIds": ["session"] }
+        ]
+      },
+      "state": { "status": "stale", "stale": true, "authStatus": "expired_refreshable" }
+    },
+    {
+      "provider": "claude",
+      "windows": [],
+      "quotaSemantics": { "status": "unknown", "effectiveAvailability": [] },
+      "state": { "status": "auth_required", "stale": false, "authStatus": "unusable" }
+    }
+  ],
+  "help": ["Synthetic default-tier schema-v5 fixture; no live usage or identity data"]
+}

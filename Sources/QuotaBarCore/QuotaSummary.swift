@@ -66,7 +66,7 @@ public enum QuotaSummary {
     guard let availability else { return nil }
     return KnownQuota(
       providerID: provider.provider,
-      providerLabel: provider.label,
+      providerLabel: provider.label ?? provider.provider,
       availability: availability
     )
   }

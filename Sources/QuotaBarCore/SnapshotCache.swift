@@ -86,6 +86,8 @@ public final class FileSnapshotCache: @unchecked Sendable {
       ).first
       ?? fileManager.homeDirectoryForCurrentUser.appendingPathComponent(
         "Library/Application Support")
+    // Retain the original filename so upgrades still find existing v3 snapshots.
+    // The report's versioned decoder also accepts current snapshots at this path.
     let fileURL =
       applicationSupport
       .appendingPathComponent("QuotaBar", isDirectory: true)
@@ -97,11 +99,7 @@ public final class FileSnapshotCache: @unchecked Sendable {
     guard let data = try? Data(contentsOf: fileURL) else { return nil }
     let decoder = JSONDecoder()
     decoder.dateDecodingStrategy = .iso8601
-    guard
-      let snapshot = try? decoder.decode(StoredSnapshot.self, from: data),
-      snapshot.report.schemaVersion == 3
-    else { return nil }
-    return snapshot
+    return try? decoder.decode(StoredSnapshot.self, from: data)
   }
 
   public func save(_ snapshot: StoredSnapshot) throws {

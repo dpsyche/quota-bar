@@ -102,6 +102,61 @@ struct ProviderTileTests {
     #expect(model.state.report?.providers.map(\.provider) == ["a", "unconfirmed", "b"])
   }
 
+  @Test
+  func currentFormatRefreshPreservesOldCacheAndStaleFallbackAcrossRelaunch() async throws {
+    let lab = try TileLab()
+    defer { lab.remove() }
+    try lab.report([provider("codex")])
+    let oldModel = lab.model()
+    await oldModel.refresh()
+    let upgraded = lab.model()
+    #expect(upgraded.state.report?.schemaVersion == 3)
+    #expect(upgraded.visibleProviderIDs == ["codex"])
+    #expect(upgraded.state.isStale)
+
+    let current = ProviderQuota(
+      provider: "codex", windows: [],
+      quotaSemantics: QuotaSemantics(
+        status: .known,
+        effectiveAvailability: [
+          EffectiveAvailability(scope: "all_models", status: .known, effectivePercentRemaining: 55)
+        ]),
+      state: ProviderState(status: .fresh, stale: false, authStatus: .usable))
+    try lab.report([current], schemaVersion: 5)
+    await upgraded.refresh()
+    #expect(upgraded.state.report?.schemaVersion == 5)
+    #expect(upgraded.state.failureMessage == nil)
+    #expect(!upgraded.state.isStale)
+    #expect(upgraded.visibleProviders.first?.displayLabel == "Codex")
+    #expect(upgraded.visibleProviders.first?.sourceLabel == nil)
+    #expect(upgraded.headlineSignal == .healthy)
+
+    let reopened = lab.model()
+    #expect(reopened.state.report?.schemaVersion == 5)
+    #expect(reopened.visibleProviderIDs == ["codex"])
+    #expect(reopened.state.isStale)
+    #expect(reopened.headlineSignal == .neutral)
+    let savedAt = reopened.state.lastSuccessfulRefresh
+    try lab.report([], schemaVersion: 99)
+    await reopened.refresh()
+    #expect(reopened.state.failureMessage == QuotaCollectorError.unsupportedSchema(99).errorDescription)
+    #expect(reopened.state.report?.schemaVersion == 5)
+    #expect(reopened.state.lastSuccessfulRefresh == savedAt)
+    #expect(reopened.headlineSignal == .neutral)
+    #expect(reopened.visibleProviderIDs == ["codex"])
+
+    try lab.report([
+      ProviderQuota(
+        provider: "codex", windows: [],
+        state: ProviderState(status: .authRequired, stale: false, authStatus: .unusable))
+    ], exitCode: 1, schemaVersion: 5)
+    await reopened.refresh()
+    #expect(reopened.visibleProviders.isEmpty)
+    #expect(reopened.state.failureMessage == nil)
+    #expect(!reopened.state.isStale)
+    #expect(reopened.headlineSignal == .neutral)
+  }
+
   private func provider(_ id: String, status: ProviderStatus = .fresh) -> ProviderQuota {
     ProviderQuota(
       provider: id, label: "Synthetic \(id)", source: .api, windows: [],
@@ -128,8 +183,9 @@ private struct TileLab {
       defaults: UserDefaults(suiteName: name)!)
   }
 
-  func report(_ providers: [ProviderQuota], exitCode: Int = 0) throws {
-    let report = QuotaAxiResponse(generatedAt: "2026-01-01T00:00:00Z", providers: providers)
+  func report(_ providers: [ProviderQuota], exitCode: Int = 0, schemaVersion: Int = 3) throws {
+    let report = QuotaAxiResponse(
+      generatedAt: "2026-01-01T00:00:00Z", schemaVersion: schemaVersion, providers: providers)
     try JSONEncoder().encode(report).write(to: directory.appendingPathComponent("fixture.json"))
     try "#!/bin/sh\n/bin/cat '\(directory.path)/fixture.json'\nexit \(exitCode)\n".write(
       to: executable, atomically: true, encoding: .utf8)

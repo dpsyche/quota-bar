@@ -14,7 +14,9 @@ Mapping was checked against Quota AXI 0.1.21's help, published “Provider state
 - `authStatus: unusable` alone is not definitive logout. The Grok adapter can wrap both sign-out and credential-resolution failures as stale/unusable. **Accepted policy:** previously confirmed providers remain visible with **Sign-in unconfirmed** when current evidence is ambiguous. Ambiguity never admits a never-confirmed provider. Definitive auth-required evidence clears remembered sign-in; later uncertainty cannot restore it without new positive evidence.
 - A stale report without explicit auth usability needs prior positive evidence. Provider labels, error prose, quota values and window presence are not auth evidence.
 
-For the collector's failure and fallback behavior, see [How it works](../README.md#how-it-works). The exit-1 exception follows Quota AXI's `commands.js` (`loadQuota`/`isFailed`): the report must be nonempty, use schema v3, and contain no provider with `fresh` or `stale` status.
+For the collector's failure and fallback behavior, see [How it works](../README.md#how-it-works). The exit-1 exception follows Quota AXI's `commands.js` (`loadQuota`/`isFailed`): the report must be nonempty, use a supported schema (v3 or v5), and contain no provider with `fresh` or `stale` status.
+
+Default schema-v5 JSON omits provider labels, sources, and `sourcesTried`. Display-name fallbacks do not establish sign-in; the same structured state rules above apply without that metadata. New or unknown provenance never establishes auth by itself.
 
 No visibility preference previously existed. Setup and refresh controls remain available when the signed-in list is empty.
 

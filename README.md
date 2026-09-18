@@ -71,16 +71,17 @@ The app has no Dock icon. Its menu-bar ring refreshes at launch, on **⌘R** or 
 ## How it works
 
 - **Native shell:** `Sources/QuotaBar` uses the SwiftUI app lifecycle and a window-style `MenuBarExtra`.
-- **Data and policy:** `Sources/QuotaBarCore` owns Quota AXI schema v3 decoding, effective-quota selection, thresholds, executable discovery, bounded process execution, and snapshot state.
+- **Data and policy:** `Sources/QuotaBarCore` owns Quota AXI schema v3 and v5 decoding, effective-quota selection, thresholds, executable discovery, bounded process execution, and snapshot state.
 - **Collection:** Quota Bar launches the discovered executable directly with the single argument `--json`; it never invokes a shell. The executable's directory and deterministic local binary locations are added to the child `PATH` so Finder launches can run NVM/npm installations.
-- **Bounds:** a collector run has a 45-second deadline and a combined 2 MiB stdout/stderr limit. Nonzero exits, malformed JSON, unsupported schemas, timeouts, and excess output become in-app collection failures. The exception is Quota AXI's all-providers-failed exit 1 with a valid schema-v3 report: Quota Bar consumes its structured states so signing out of the last provider does not retain an obsolete signed-in snapshot.
+- **Bounds:** a collector run has a 45-second deadline and a combined 2 MiB stdout/stderr limit. Nonzero exits, malformed JSON, unsupported schemas, timeouts, and excess output become in-app collection failures. The exception is Quota AXI's all-providers-failed exit 1 with a valid supported-schema report: Quota Bar consumes its structured states so signing out of the last provider does not retain an obsolete signed-in snapshot.
+- **Format compatibility:** current default JSON (schema v5) omits some display and provenance metadata. Quota Bar supplies display names from provider IDs, leaves missing provenance and quota values unknown, and never requests `--full`. Unsupported versions are reported before attempting to decode their provider data.
 - **Truthful fallback:** only current, known `effectiveAvailability` values contribute to the ring. Unresolved relationships remain unknown and cards show each reported window separately. A transient failure retains the last successful snapshot, turns the ring gray, and labels the data stale with its timestamp.
 
 ## Data source and privacy
 
 `quota-axi --json` is the only quota source. Quota AXI continues to read the user's existing provider credential sources and contact provider endpoints; Quota Bar does not read, store, copy, import, or log provider credentials.
 
-Quota Bar does not request Quota AXI's `--full` output, so account identity is omitted. App preferences store stable provider IDs for tile order and previous positive sign-in evidence, not credentials or identities. The last decoded report (quota percentages, provider state, and collection-source labels, not credentials) is stored with user-only permissions at `~/Library/Application Support/QuotaBar/snapshot-v3.json`. No live quota output, machine path, token, or credential is committed in this repository's tests or fixtures.
+Quota Bar does not request Quota AXI's `--full` output, so account identity is omitted. App preferences store stable provider IDs for tile order and previous positive sign-in evidence, not credentials or identities. The last decoded report (quota percentages, provider state, and collection-source labels, not credentials) is stored with user-only permissions at `~/Library/Application Support/QuotaBar/snapshot-v3.json`. The filename is retained for upgrade compatibility: existing v3 snapshots still load, and current v5 snapshots round-trip at the same path. Either starts stale until a successful refresh. No live quota output, machine path, token, or credential is committed in this repository's tests or fixtures.
 
 There are no first-release notifications, alerts, analytics, or third-party relays.
 

@@ -26,7 +26,7 @@ public enum QuotaCollectorError: Error, Equatable, LocalizedError, Sendable {
       return "Quota AXI returned data Quota Bar could not read."
     case .unsupportedSchema(let version):
       return
-        "Quota AXI returned unsupported schema version \(version); Quota Bar requires version 3."
+        "Quota AXI returned unsupported schema version \(version); Quota Bar supports versions 3 and 5."
     }
   }
 }
@@ -90,6 +90,8 @@ public struct QuotaCollector: Sendable {
     let report: QuotaAxiResponse
     do {
       report = try JSONDecoder().decode(QuotaAxiResponse.self, from: output.standardOutput)
+    } catch QuotaSchemaError.unsupportedVersion(let version) {
+      throw QuotaCollectorError.unsupportedSchema(version)
     } catch {
       if output.exitCode != 0 {
         throw QuotaCollectorError.process(.unsuccessfulExit(output.exitCode))
@@ -109,9 +111,6 @@ public struct QuotaCollector: Sendable {
       throw QuotaCollectorError.process(.unsuccessfulExit(1))
     }
 
-    guard report.schemaVersion == 3 else {
-      throw QuotaCollectorError.unsupportedSchema(report.schemaVersion)
-    }
     return QuotaCollection(report: report, executable: executable)
   }
 
