@@ -15,7 +15,7 @@ BIN="$(swift build --package-path "$ROOT" --scratch-path "$ROOT/build/native-tes
 cp "$BIN/QuotaBar" "$APP/Contents/MacOS/QuotaBar"
 cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier local.QuotaBar.NativeTest.$(uuidgen)" "$APP/Contents/Info.plist"
-cp "$ROOT/Tests/QuotaBarCoreTests/Fixtures/quota-v3.json" "$LAB/fixture.json"
+cp "${QUOTABAR_TEST_FIXTURE:-$ROOT/Tests/QuotaBarCoreTests/Fixtures/quota-v3.json}" "$LAB/fixture.json"
 printf '#!/bin/bash\nsleep 3\n/bin/cat "%s/fixture.json"\n' "$LAB" > "$LAB/collector"
 chmod +x "$LAB/collector"
 codesign --force --sign - --timestamp=none "$APP" >&2

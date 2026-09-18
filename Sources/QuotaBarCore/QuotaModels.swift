@@ -1,6 +1,12 @@
 import Foundation
 
+public enum QuotaSchemaError: Error, Equatable, Sendable {
+  case unsupportedVersion(Int)
+}
+
 public struct QuotaAxiResponse: Codable, Sendable {
+  public static let supportedSchemaVersions = [3, 5]
+
   public let generatedAt: String
   public let schemaVersion: Int
   public let providers: [ProviderQuota]
@@ -17,15 +23,40 @@ public struct QuotaAxiResponse: Codable, Sendable {
     self.providers = providers
     self.help = help
   }
+
+  private enum CodingKeys: String, CodingKey {
+    case generatedAt, schemaVersion, providers, help
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
+    // Check the envelope before touching a potentially incompatible provider body.
+    guard Self.supportedSchemaVersions.contains(schemaVersion) else {
+      throw QuotaSchemaError.unsupportedVersion(schemaVersion)
+    }
+    generatedAt = try container.decode(String.self, forKey: .generatedAt)
+    providers = try container.decode([ProviderQuota].self, forKey: .providers)
+    help = try container.decodeIfPresent([String].self, forKey: .help)
+  }
 }
 
 public enum ProviderSource: String, Codable, Sendable {
   case oauth
   case cliRPC = "cli-rpc"
+  case cli
+  case piOpenAICodex = "pi:openai-codex"
   case api
   case web
   case cache
   case unavailable
+  case unknown
+
+  public init(from decoder: Decoder) throws {
+    let value = try decoder.singleValueContainer().decode(String.self)
+    // Provenance is display metadata, never quota or sign-in evidence.
+    self = Self(rawValue: value) ?? .unknown
+  }
 }
 
 public enum ProviderStatus: String, Codable, Sendable {
@@ -58,7 +89,7 @@ public struct ProviderState: Codable, Sendable {
   public let reason: ProviderStateReason?
   public let remedyCommand: String?
   public let untrustedWindowIds: [String]?
-  public let sourcesTried: [String]
+  public let sourcesTried: [String]?
 
   public init(
     status: ProviderStatus,
@@ -70,7 +101,7 @@ public struct ProviderState: Codable, Sendable {
     reason: ProviderStateReason? = nil,
     remedyCommand: String? = nil,
     untrustedWindowIds: [String]? = nil,
-    sourcesTried: [String] = []
+    sourcesTried: [String]? = nil
   ) {
     self.status = status
     self.stale = stale
@@ -324,13 +355,13 @@ public enum QuotaSemanticsStatus: String, Codable, Sendable {
 
 public struct QuotaSemantics: Codable, Sendable {
   public let status: QuotaSemanticsStatus
-  public let description: String
+  public let description: String?
   public let effectiveAvailability: [EffectiveAvailability]
   public let unresolvedWindowIds: [String]?
 
   public init(
     status: QuotaSemanticsStatus,
-    description: String,
+    description: String? = nil,
     effectiveAvailability: [EffectiveAvailability],
     unresolvedWindowIds: [String]? = nil
   ) {
@@ -360,8 +391,8 @@ public struct ProviderCredits: Codable, Sendable {
 
 public struct ProviderQuota: Codable, Sendable {
   public let provider: String
-  public let label: String
-  public let source: ProviderSource
+  public let label: String?
+  public let source: ProviderSource?
   public let plan: String?
   public let windows: [QuotaWindow]
   public let quotaSemantics: QuotaSemantics?
@@ -370,8 +401,8 @@ public struct ProviderQuota: Codable, Sendable {
 
   public init(
     provider: String,
-    label: String,
-    source: ProviderSource,
+    label: String? = nil,
+    source: ProviderSource? = nil,
     plan: String? = nil,
     windows: [QuotaWindow],
     quotaSemantics: QuotaSemantics? = nil,

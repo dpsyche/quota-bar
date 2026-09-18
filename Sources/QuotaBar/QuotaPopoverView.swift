@@ -231,7 +231,7 @@ private struct ProviderCardView: View {
         providerMark
 
         VStack(alignment: .leading, spacing: 2) {
-          Text(provider.label)
+          Text(provider.displayLabel)
             .font(.system(size: 14, weight: .semibold))
           Text(providerStateText)
             .font(.system(size: 10.5))
@@ -268,8 +268,8 @@ private struct ProviderCardView: View {
               .frame(width: 20, height: 18)
           }
           .disabled(model.visibleProviderIDs.first == provider.provider)
-          .help("Move \(provider.label) earlier")
-          .accessibilityLabel("Move \(provider.label) earlier")
+          .help("Move \(provider.displayLabel) earlier")
+          .accessibilityLabel("Move \(provider.displayLabel) earlier")
 
           Button {
             model.moveProvider(provider.provider, by: 1)
@@ -278,8 +278,8 @@ private struct ProviderCardView: View {
               .frame(width: 20, height: 18)
           }
           .disabled(model.visibleProviderIDs.last == provider.provider)
-          .help("Move \(provider.label) later")
-          .accessibilityLabel("Move \(provider.label) later")
+          .help("Move \(provider.displayLabel) later")
+          .accessibilityLabel("Move \(provider.displayLabel) later")
         }
         .buttonStyle(.borderless)
         .controlSize(.small)
@@ -432,11 +432,11 @@ private struct ProviderCardView: View {
   }
 
   private var providerInitials: String {
-    let words = provider.label.split(separator: " ")
+    let words = provider.displayLabel.split(separator: " ")
     if words.count > 1 {
       return words.prefix(2).compactMap(\.first).map(String.init).joined().uppercased()
     }
-    return String(provider.label.prefix(2)).uppercased()
+    return String(provider.displayLabel.prefix(2)).uppercased()
   }
 
   private var providerStateText: String {
@@ -452,7 +452,8 @@ private struct ProviderCardView: View {
     switch provider.state.status {
     case .fresh:
       let plan = provider.plan?.replacingOccurrences(of: "_", with: " ").capitalized
-      return [plan, sourceLabel].compactMap { $0 }.joined(separator: " · ")
+      let details = [plan, provider.sourceLabel].compactMap { $0 }.joined(separator: " · ")
+      return details.isEmpty ? "Current quota report" : details
     case .stale:
       return "Provider data stale · \(refreshTimestampText)"
     case .authRequired:
@@ -463,17 +464,6 @@ private struct ProviderCardView: View {
       return "Quota unavailable · not in summary"
     case .error:
       return "Collection error · not in summary"
-    }
-  }
-
-  private var sourceLabel: String? {
-    switch provider.source {
-    case .oauth: return "OAuth"
-    case .cliRPC: return "CLI"
-    case .api: return "API"
-    case .web: return "Web"
-    case .cache: return "Cache"
-    case .unavailable: return nil
     }
   }
 
