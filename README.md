@@ -43,6 +43,8 @@ The packaging script makes an ad-hoc-signed app at `build/QuotaBar.app` and veri
 
 The native regression launches a uniquely identified, signed disposable app under `build/native-label.*`, using the real scene/label/popover with a delayed synthetic collector, isolated cache, and disposable test preferences (the executable path is a volatile input). It asserts a nonempty native ring image during loading, changed pixels after refresh, and popover appearance after invoking the button action. It exits within a bounded deadline and never launches the live collector or modifies the installed app. Test instrumentation is excluded from normal builds. `swift test` also checks ring colors and stroke bounds at 1x/2x, headline policy, and core behavior.
 
+The native script uses the legacy fixture by default. To exercise the current format, run `QUOTABAR_TEST_FIXTURE=Tests/QuotaBarCoreTests/Fixtures/quota-v5.json ./scripts/test-native-label.sh` from the repository root. Use only synthetic fixtures with this override.
+
 Native button/pixel/action checks are **not physical-screen acceptance**. For safe manual acceptance, run `./scripts/test-native-label.sh --manual` (the synthetic probe remains open):
 
 1. Observe a gray loading ring, then yellow after collection, with no adjacent text.
